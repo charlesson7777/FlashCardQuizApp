@@ -52,6 +52,7 @@ fun FlashcardQuizApp() {
 
     var currentQuestionIndex by remember { mutableStateOf(0) }
     var userAnswer by remember { mutableStateOf("") }
+    var attemptsLeft by remember{mutableStateOf(3)}
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
 
@@ -99,6 +100,8 @@ fun FlashcardQuizApp() {
                             handleAnswer(
                                 userAnswer = userAnswer,
                                 correctAnswer = currentFlashcard.answer,
+                                attemptsLeft = attemptsLeft,
+                                onAttemptFail = {attemptsLeft--},
                                 onNextQuestion = {
                                     userAnswer = ""
                                     if (currentQuestionIndex < flashcards.size - 1) {
@@ -122,8 +125,11 @@ fun FlashcardQuizApp() {
                         handleAnswer(
                             userAnswer = userAnswer,
                             correctAnswer = currentFlashcard.answer,
+                            attemptsLeft = attemptsLeft,
+                            onAttemptFail = { attemptsLeft-- },
                             onNextQuestion = {
                                 userAnswer = ""
+                                attemptsLeft = 3
                                 if (currentQuestionIndex < flashcards.size - 1) {
                                     currentQuestionIndex++
                                 } else {
@@ -137,6 +143,7 @@ fun FlashcardQuizApp() {
                 ) {
                     Text("Submit Answer")
                 }
+                Text("Attempts left: $attemptsLeft")
 
             } else {
                 Text("Quiz Complete!")
@@ -161,6 +168,8 @@ fun FlashcardQuizApp() {
 fun handleAnswer(
     userAnswer: String,
     correctAnswer: String,
+    attemptsLeft: Int,
+    onAttemptFail: () -> Unit,
     onNextQuestion: () -> Unit,
     snackbarHostState: SnackbarHostState,
     coroutineScope: CoroutineScope
@@ -168,11 +177,19 @@ fun handleAnswer(
     if (userAnswer.isNotBlank()) {
         val isCorrect = userAnswer.equals(correctAnswer, ignoreCase = true)
         coroutineScope.launch {
-            snackbarHostState.showSnackbar(
-                message = if (isCorrect) "Correct!" else "Wrong! The answer is $correctAnswer"
-            )
+            if (isCorrect) {
+                snackbarHostState.showSnackbar("Correct!")
+                onNextQuestion()
+            } else {
+                if (attemptsLeft > 1) {
+                    snackbarHostState.showSnackbar("Wrong! Try again.")
+                    onAttemptFail()
+                } else {
+                    snackbarHostState.showSnackbar("Wrong! The answer is $correctAnswer")
+                    onNextQuestion()
+                }
+            }
         }
-        onNextQuestion()
     }
 }
 
